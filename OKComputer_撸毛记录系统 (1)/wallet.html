@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钱包管理 - Ape Ledger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #16A085;
+            --warning-color: #E67E22;
+            --background-color: #F8F9FA;
+            --text-primary: #343A40;
+            --text-secondary: #6C757D;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+        }
+        
+        .serif-font {
+            font-family: 'Noto Serif SC', serif;
+        }
+        
+        .wallet-card {
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .wallet-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-color: #3b82f6;
+        }
+        
+        .network-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .network-ethereum { background-color: rgba(98, 126, 234, 0.1); color: #627eea; }
+        .network-arbitrum { background-color: rgba(40, 160, 240, 0.1); color: #28a0f0; }
+        .network-optimism { background-color: rgba(255, 0, 0, 0.1); color: #ff0000; }
+        .network-polygon { background-color: rgba(130, 71, 229, 0.1); color: #8247e5; }
+        .network-bsc { background-color: rgba(240, 185, 11, 0.1); color: #f0b90b; }
+        .network-other { background-color: rgba(108, 117, 125, 0.1); color: #6c757d; }
+        
+        .modal {
+            backdrop-filter: blur(4px);
+        }
+        
+        .address-display {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+        
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .edit-btn {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .edit-btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .delete-btn {
+            background-color: #dc2626;
+            color: white;
+        }
+        
+        .delete-btn:hover {
+            background-color: #b91c1c;
+            transform: translateY(-1px);
+        }
+        
+        .add-btn {
+            background-color: #16A085;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .add-btn:hover {
+            background-color: #138d75;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <button onclick="goBack()" class="text-gray-600 hover:text-gray-900 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <h1 class="text-xl font-bold serif-font text-gray-900">钱包管理</h1>
+                </div>
+                <button onclick="showAddWalletModal()" class="add-btn">
+                    添加新钱包
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 钱包列表 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="walletList">
+            <!-- 钱包卡片将在这里动态生成 -->
+        </div>
+
+        <!-- 空状态 -->
+        <div id="emptyState" class="empty-state hidden">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">还没有钱包</h3>
+            <p class="text-gray-500 mb-6">添加你的第一个钱包来开始记录项目</p>
+            <button onclick="showAddWalletModal()" class="add-btn">
+                添加新钱包
+            </button>
+        </div>
+    </div>
+
+    <!-- 添加/编辑钱包模态框 -->
+    <div id="walletModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 modal hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900" id="modalTitle">添加新钱包</h3>
+                    <button onclick="closeWalletModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <form id="walletForm">
+                    <!-- 钱包别名 -->
+                    <div class="mb-4">
+                        <label for="walletAlias" class="block text-sm font-medium text-gray-700 mb-2">
+                            钱包别名 <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="walletAlias" name="walletAlias" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="如：主钱包、测试钱包1">
+                    </div>
+
+                    <!-- 钱包地址 -->
+                    <div class="mb-4">
+                        <label for="walletAddress" class="block text-sm font-medium text-gray-700 mb-2">
+                            钱包地址 <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="walletAddress" name="walletAddress" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                               placeholder="0x...">
+                        <p class="mt-1 text-xs text-gray-500">支持EVM地址格式</p>
+                    </div>
+
+                    <!-- 网络类型 -->
+                    <div class="mb-6">
+                        <label for="networkType" class="block text-sm font-medium text-gray-700 mb-2">
+                            网络类型
+                        </label>
+                        <select id="networkType" name="networkType"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="Ethereum">Ethereum</option>
+                            <option value="Arbitrum">Arbitrum</option>
+                            <option value="Optimism">Optimism</option>
+                            <option value="Polygon">Polygon</option>
+                            <option value="BSC">BSC</option>
+                            <option value="其他">其他</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">EVM地址可自动识别，非EVM可手动选择</p>
+                    </div>
+
+                    <!-- 按钮组 -->
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeWalletModal()" 
+                                class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-lg transition-colors">
+                            取消
+                        </button>
+                        <button type="submit" 
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除对话框 -->
+    <div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg p-6 max-w-sm w-full">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">确认删除</h3>
+                <p class="text-gray-600 mb-6">确定要删除这个钱包吗？相关联的项目记录将保留，但钱包信息将丢失。</p>
+                <div class="flex space-x-4">
+                    <button onclick="closeDeleteModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-lg transition-colors">
+                        取消
+                    </button>
+                    <button onclick="confirmDeleteWallet()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                        删除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+    <script>
+        let currentEditWalletId = null;
+        let walletToDelete = null;
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadWalletsList();
+            setupWalletForm();
+        });
+
+        // 加载钱包列表
+        function loadWalletsList() {
+            const wallets = getWallets();
+            const walletList = document.getElementById('walletList');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (wallets.length === 0) {
+                walletList.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            walletList.innerHTML = '';
+            
+            wallets.forEach(wallet => {
+                const walletCard = createWalletCard(wallet);
+                walletList.appendChild(walletCard);
+            });
+        }
+
+        // 创建钱包卡片
+        function createWalletCard(wallet) {
+            const card = document.createElement('div');
+            card.className = 'wallet-card bg-white rounded-xl p-6';
+            
+            const networkClass = `network-${wallet.network.toLowerCase()}`;
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">${wallet.alias}</h3>
+                        <span class="network-badge ${networkClass}">${wallet.network}</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="editWallet('${wallet.id}')" class="action-btn edit-btn">
+                            编辑
+                        </button>
+                        <button onclick="showDeleteWalletModal('${wallet.id}')" class="action-btn delete-btn">
+                            删除
+                        </button>
+                    </div>
+                </div>
+                <div class="address-display text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    ${wallet.address}
+                </div>
+                <div class="mt-3 text-xs text-gray-500">
+                    创建时间: ${new Date(wallet.createdAt).toLocaleDateString()}
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // 显示添加钱包模态框
+        function showAddWalletModal() {
+            currentEditWalletId = null;
+            document.getElementById('modalTitle').textContent = '添加新钱包';
+            document.getElementById('walletForm').reset();
+            document.getElementById('walletModal').classList.remove('hidden');
+        }
+
+        // 编辑钱包
+        function editWallet(walletId) {
+            currentEditWalletId = walletId;
+            const wallets = getWallets();
+            const wallet = wallets.find(w => w.id === walletId);
+            
+            if (wallet) {
+                document.getElementById('modalTitle').textContent = '编辑钱包';
+                document.getElementById('walletAlias').value = wallet.alias;
+                document.getElementById('walletAddress').value = wallet.address;
+                document.getElementById('networkType').value = wallet.network;
+                document.getElementById('walletModal').classList.remove('hidden');
+            }
+        }
+
+        // 关闭钱包模态框
+        function closeWalletModal() {
+            document.getElementById('walletModal').classList.add('hidden');
+            document.getElementById('walletForm').reset();
+            currentEditWalletId = null;
+        }
+
+        // 设置钱包表单
+        function setupWalletForm() {
+            const form = document.getElementById('walletForm');
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveWallet();
+            });
+            
+            // 地址输入时自动识别网络
+            const addressInput = document.getElementById('walletAddress');
+            addressInput.addEventListener('input', function() {
+                const address = this.value.trim();
+                if (address.startsWith('0x') && address.length === 42) {
+                    // EVM地址，可以自动识别，这里简化处理
+                    document.getElementById('networkType').value = 'Ethereum';
+                }
+            });
+        }
+
+        // 保存钱包
+        function saveWallet() {
+            const alias = document.getElementById('walletAlias').value.trim();
+            const address = document.getElementById('walletAddress').value.trim();
+            const network = document.getElementById('networkType').value;
+            
+            if (!alias || !address) {
+                alert('请填写必填项');
+                return;
+            }
+            
+            // 简单验证地址格式
+            if (!isValidAddress(address)) {
+                alert('请输入有效的钱包地址');
+                return;
+            }
+            
+            const wallet = {
+                id: currentEditWalletId || generateId(),
+                alias: alias,
+                address: address,
+                network: network,
+                createdAt: currentEditWalletId ? getWallets().find(w => w.id === currentEditWalletId)?.createdAt || Date.now() : Date.now()
+            };
+            
+            let wallets = getWallets();
+            
+            if (currentEditWalletId) {
+                const index = wallets.findIndex(w => w.id === currentEditWalletId);
+                if (index !== -1) {
+                    wallets[index] = wallet;
+                }
+            } else {
+                wallets.push(wallet);
+            }
+            
+            saveWallets(wallets);
+            closeWalletModal();
+            loadWalletsList();
+            
+            showSuccessMessage(currentEditWalletId ? '钱包更新成功' : '钱包添加成功');
+        }
+
+        // 验证地址格式
+        function isValidAddress(address) {
+            // 简单的EVM地址验证
+            if (address.startsWith('0x')) {
+                return /^0x[a-fA-F0-9]{40}$/.test(address);
+            }
+            // 可以添加其他格式验证
+            return address.length >= 20;
+        }
+
+        // 显示删除钱包确认框
+        function showDeleteWalletModal(walletId) {
+            walletToDelete = walletId;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        // 关闭删除确认框
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            walletToDelete = null;
+        }
+
+        // 确认删除钱包
+        function confirmDeleteWallet() {
+            if (walletToDelete) {
+                let wallets = getWallets();
+                wallets = wallets.filter(w => w.id !== walletToDelete);
+                saveWallets(wallets);
+                
+                loadWalletsList();
+                closeDeleteModal();
+                showSuccessMessage('钱包删除成功');
+            }
+        }
+
+        // 返回上一页
+        function goBack() {
+            window.history.back();
+        }
+
+        // 显示成功消息
+        function showSuccessMessage(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
